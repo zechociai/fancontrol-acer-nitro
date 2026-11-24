@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>FanControl.AcerNitro</AssemblyName>
+    <RootNamespace>FanControl.AcerNitro</RootNamespace>
+    <Version>0.1.0</Version>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+    <!-- Override with: dotnet build -p:FanControlDir="D:\Apps\FanControl" -->
+    <FanControlDir Condition="'$(FanControlDir)' == ''">C:\Program Files (x86)\FanControl</FanControlDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Provided by FanControl at runtime; do not copy next to the plugin. -->
+    <Reference Include="FanControl.Plugins">
+      <HintPath>$(FanControlDir)\FanControl.Plugins.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <PackageReference Include="System.Management" Version="8.0.0">
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>
