@@ -7,7 +7,7 @@ namespace FanControl.AcerNitro;
 /// <summary>
 /// FanControl plugin for Acer Nitro laptops (tested target: AN515-57) using the
 /// AcerGamingFunction WMI interface. Exposes CPU/GPU/system temperatures, both fan RPMs,
-/// and one control per fan.
+/// one control per fan, and the ACPI thermal zones.
 /// </summary>
 public sealed class AcerNitroPlugin : IPlugin2
 {
@@ -20,6 +20,7 @@ public sealed class AcerNitroPlugin : IPlugin2
     private AcerWmi? _wmi;
 
     private readonly List<ValueSensor> _sensors = new();
+    private readonly List<ZoneSensor> _zones = new();
     private ValueSensor? _cpuTemp;
     private ValueSensor? _gpuTemp;
     private FanControlSensor? _cpuControl;
@@ -54,6 +55,8 @@ public sealed class AcerNitroPlugin : IPlugin2
 
     public void Load(IPluginSensorsContainer container)
     {
+        LoadThermalZones(container);
+
         if (_wmi is null) return;
 
         _cpuTemp = AddSensor(container.TempSensors, "acer/temp/cpu", "CPU (Acer EC)", AcerWmi.Sensor.CpuTemperature);
@@ -79,8 +82,44 @@ public sealed class AcerNitroPlugin : IPlugin2
         return s;
     }
 
+    private void LoadThermalZones(IPluginSensorsContainer container)
+    {
+        try
+        {
+            foreach (var zone in AcpiThermalZones.ReadAll().Keys)
+            {
+                var s = new ZoneSensor($"acpi/tz/{zone.ToLowerInvariant()}", $"ACPI {zone}", zone);
+                _zones.Add(s);
+                container.TempSensors.Add(s);
+            }
+            Log($"ACPI thermal zones: {(_zones.Count == 0 ? "none" : string.Join(", ", _zones.ConvertAll(z => z.Zone)))}.");
+        }
+        catch (Exception ex)
+        {
+            Log($"ACPI thermal zones unavailable: {ex.Message}");
+        }
+    }
+
+    private void UpdateThermalZones()
+    {
+        if (_zones.Count == 0) return;
+        try
+        {
+            var temps = AcpiThermalZones.ReadAll();
+            foreach (var z in _zones)
+                z.Value = temps.TryGetValue(z.Zone, out var t) && t is > 0 and < 150 ? t : null;
+        }
+        catch (Exception ex)
+        {
+            foreach (var z in _zones) z.Value = null;
+            Log($"Read ACPI thermal zones failed: {ex.Message}");
+        }
+    }
+
     public void Update()
     {
+        UpdateThermalZones();
+
         if (_wmi is null) return;
 
         foreach (var s in _sensors)
@@ -145,6 +184,7 @@ public sealed class AcerNitroPlugin : IPlugin2
 
     public void Close()
     {
+        _zones.Clear();
         if (_wmi is null) return;
         try
         {
@@ -173,6 +213,24 @@ internal sealed class ValueSensor : IPluginSensor
     public string Id { get; }
     public string Name { get; }
     public AcerWmi.Sensor Sensor { get; }
+    public float? Value { get; set; }
+
+    // Values are refreshed in bulk by AcerNitroPlugin.Update().
+    public void Update() { }
+}
+
+internal sealed class ZoneSensor : IPluginSensor
+{
+    public ZoneSensor(string id, string name, string zone)
+    {
+        Id = id;
+        Name = name;
+        Zone = zone;
+    }
+
+    public string Id { get; }
+    public string Name { get; }
+    public string Zone { get; }
     public float? Value { get; set; }
 
     // Values are refreshed in bulk by AcerNitroPlugin.Update().

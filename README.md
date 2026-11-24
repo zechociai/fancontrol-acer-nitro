@@ -16,7 +16,7 @@ Other Nitro or Predator models that expose `AcerGamingFunction` with the same en
 
 | Kind | Sensors |
 |---|---|
-| Temperature | CPU (Acer EC), GPU (Acer EC), System (Acer EC) |
+| Temperature | CPU (Acer EC), GPU (Acer EC), System (Acer EC), plus one `ACPI <zone>` per ACPI thermal zone (`ACPI TZ00` on the AN515-57) |
 | Fan speed (RPM) | CPU fan, GPU fan |
 | Control (%) | CPU fan, GPU fan, each already paired with its RPM sensor so calibration works |
 
@@ -86,6 +86,8 @@ Notes:
 
   **Swapping drives between slots.** LHM's `/nvme/N` index is the Windows disk number (`Get-Disk`), and Windows numbers disks in PCI enumeration order at boot. The CPU port (bus 2) comes before the chipset port (bus 46), so the index stays with the slot: `M.2 slot 0` remains the CPU slot whatever drive is in it. The curves don't follow along, because they carry the drive's name. After a swap, rename `SSD WD (sistema)` and `SSD Gigabyte` and move their points, since the drives have different warning thresholds (80 °C vs 70 °C). Disk numbering is stable in practice but not guaranteed: an extra disk attached at boot, a BIOS update or a Windows reinstall can change it. Check with `Get-Disk | Select-Object Number, FriendlyName, Location` after any hardware change.
 - **Display-only cards.** A Graph curve that no control uses doesn't move any fan, so it works as a temperature card on the main screen. I keep cards for the second NVMe, `CPU Core Max` (it rises before the package does) and `System (Acer EC)`. I haven't identified what the EC's "system" sensor actually measures; it reads around 90 °C at idle on this unit, so don't drive fans from it.
+- **What the EC exposes.** A scan of `GetGamingSysInfo` IDs 0x00–0x3F (command byte 0x01) on the AN515-57 returns data only for 0x01 CPU temperature, 0x02 CPU fan, 0x03 system temperature, 0x06 GPU fan and 0x0A GPU temperature, all already exposed. In a test with the CPU going from 51 to 78 °C under full load, 0x03 stayed at 90–92 °C. It doesn't follow load, so treat it as unreliable.
+- **`ACPI TZ00`.** This is the board thermal zone Windows itself uses for passive cooling, around 48–51 °C on this unit. FanControl doesn't read ACPI zones natively, so the plugin adds them. It reads the *Thermal Zone Information* performance counter (`Win32_PerfRawData_Counters_ThermalZoneInformation`), which re-evaluates `_TMP` on each read, rather than `MSAcpi_ThermalZoneTemperature`, which often returns a cached value. The zone moves slowly; use it as a chassis-level reading, not a fan source.
 
 ## WMI encodings used
 
