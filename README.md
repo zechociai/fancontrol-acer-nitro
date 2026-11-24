@@ -83,6 +83,8 @@ Notes:
   ```
 
   A port named `PEG` is on the CPU lanes; `PCI Express Root Port #N` is on the chipset.
+
+  **Swapping drives between slots.** LHM's `/nvme/N` index is the Windows disk number (`Get-Disk`), and Windows numbers disks in PCI enumeration order at boot. The CPU port (bus 2) comes before the chipset port (bus 46), so the index stays with the slot: `M.2 slot 0` remains the CPU slot whatever drive is in it. The curves don't follow along, because they carry the drive's name. After a swap, rename `SSD WD (sistema)` and `SSD Gigabyte` and move their points, since the drives have different warning thresholds (80 °C vs 70 °C). Disk numbering is stable in practice but not guaranteed: an extra disk attached at boot, a BIOS update or a Windows reinstall can change it. Check with `Get-Disk | Select-Object Number, FriendlyName, Location` after any hardware change.
 - **Display-only cards.** A Graph curve that no control uses doesn't move any fan, so it works as a temperature card on the main screen. I keep cards for the second NVMe, `CPU Core Max` (it rises before the package does) and `System (Acer EC)`. I haven't identified what the EC's "system" sensor actually measures; it reads around 90 °C at idle on this unit, so don't drive fans from it.
 
 ## WMI encodings used
