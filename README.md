@@ -46,14 +46,26 @@ To install by hand, run `dotnet build src -c Release` and copy `src\bin\Release\
 
 ## Suggested setup
 
-On the Nitro the CPU and GPU share heatpipes, so it works well to drive **both** fans from the hotter of the two:
+This is the setup I run on the AN515-57. Each fan follows its own chip, and the CPU fan also watches the system NVMe, which sits under the CPU-side heatpipes.
 
-1. Create a **Graph** curve called `CPU` on `CPU Package`, for example 40→25%, 55→35%, 65→50%, 75→70%, 85→90%, 92→100%.
-2. Create a **Graph** curve called `GPU` on `GPU (Acer EC)`, for example 40→25%, 55→35%, 65→50%, 72→70%, 80→90%, 87→100%.
-3. Create a **Mix** curve with function **Max** over `CPU` and `GPU`, and select it on both controls.
-4. Set hysteresis to about +2 °C / −4 °C and the step to 8% up / 4% down for smooth changes.
+| Curve | Type | Source | Points (°C → %) | Hysteresis (up / down, response time) |
+|---|---|---|---|---|
+| `CPU` | Graph | `CPU Package` | 40→25, 55→35, 65→50, 75→70, 85→90 | +2 / −4 °C, 2 s / 5 s |
+| `GPU` | Graph | `GPU (Acer EC)` | 40→25, 55→35, 65→50, 72→70, 80→90, 87→100 | +2 / −4 °C, 2 s / 5 s |
+| `SSD WD (sistema)` | Graph | NVMe 0 temperature | 60→20, 66→30, 72→55, 76→80, 80→100 | +2 / −3 °C, 2 s / 10 s |
+| `Ventoinhas` | Mix, **Max** | `CPU` + `SSD WD (sistema)` | — | — |
 
-`GPU (Acer EC)` is preferred over NVIDIA's own sensors because the dGPU powers down under Optimus, and its sensors then disappear.
+| Control | Curve | Step |
+|---|---|---|
+| CPU fan (Acer) | `Ventoinhas` | 8% up / 4% down |
+| GPU fan (Acer) | `GPU` | 8% up / 4% down |
+
+Notes:
+
+- `GPU (Acer EC)` is preferred over NVIDIA's own sensors because the dGPU powers down under Optimus, and its sensors then disappear.
+- The SSD curve stays at 20% while the drive is in its normal range, so `CPU` usually wins the Max. It only takes over as the drive approaches its 80 °C warning threshold. Use your own drive's *Warning Temperature* from LibreHardwareMonitor or HWiNFO as the 100% point.
+- The NVMe sensors only show up once storage sensors are enabled in FanControl's settings; in `userConfig.json` that is `"DisableStorageSensors": false` and `"Storage": true` under the LHM settings. Lowering the storage update interval from 60 s to 10 s makes the SSD reading close to live.
+- **Display-only cards.** A Graph curve that no control uses doesn't move any fan, so it works as a temperature card on the main screen. I keep cards for the second NVMe, `CPU Core Max` (it rises before the package does) and `System (Acer EC)`. I haven't identified what the EC's "system" sensor actually measures; it reads around 90 °C at idle on this unit, so don't drive fans from it.
 
 ## WMI encodings used
 
