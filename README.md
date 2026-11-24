@@ -65,7 +65,24 @@ Notes:
 - `GPU (Acer EC)` is preferred over NVIDIA's own sensors because the dGPU powers down under Optimus, and its sensors then disappear.
 - The SSD curve stays at 20% while the drive is in its normal range, so `CPU` usually wins the Max. It only takes over as the drive approaches its 80 °C warning threshold. Use your own drive's *Warning Temperature* from LibreHardwareMonitor or HWiNFO as the 100% point.
 - The NVMe sensors only show up once storage sensors are enabled in FanControl's settings; in `userConfig.json` that is `"DisableStorageSensors": false` and `"Storage": true` under the LHM settings. Lowering the storage update interval from 60 s to 10 s makes the SSD reading close to live.
-- **Naming.** Sensors get generic nicknames for where they are: `M.2 slot 0` (`/nvme/0/temperature/0`) and `M.2 slot 1` (`/nvme/1/temperature/0`). The drive-specific name goes only on the curve, so swapping a drive means renaming one curve. LHM numbers drives in enumeration order, which normally but not necessarily matches the physical slot.
+- **Naming.** Sensors get generic nicknames for where they are: `M.2 slot 0` (`/nvme/0/temperature/0`) and `M.2 slot 1` (`/nvme/1/temperature/0`). The drive-specific name goes only on the curve, so swapping a drive means renaming one curve. LHM numbers drives in enumeration order, which normally but not necessarily matches the physical slot. On this AN515-57 the order matches the wiring:
+
+  | LHM | Wired to | PCIe root port | Slot type | Drive here |
+  |---|---|---|---|---|
+  | `/nvme/0` → `M.2 slot 0` | CPU | PEG11 `9A05`, `PCIROOT(0)#PCI(0101)` | PCIe only | WD SN530 (system) |
+  | `/nvme/1` → `M.2 slot 1` | Chipset (PCH) | Root Port #9 `43B0`, `PCIROOT(0)#PCI(1D00)` | PCIe or SATA | GIGABYTE GP-GSM2NE3512GNTD |
+
+  Both links run at PCIe 3.0 x4. The CPU slot skips the chipset-to-CPU link, so it's the better place for the system drive. To check your own unit, run this in PowerShell:
+
+  ```powershell
+  Get-PnpDevice -Class DiskDrive -PresentOnly | ForEach-Object {
+    $ctrl = (Get-PnpDeviceProperty -InstanceId $_.InstanceId -KeyName DEVPKEY_Device_Parent).Data
+    $port = (Get-PnpDeviceProperty -InstanceId $ctrl -KeyName DEVPKEY_Device_Parent).Data
+    "{0} -> {1}" -f $_.FriendlyName, (Get-PnpDevice -InstanceId $port).FriendlyName
+  }
+  ```
+
+  A port named `PEG` is on the CPU lanes; `PCI Express Root Port #N` is on the chipset.
 - **Display-only cards.** A Graph curve that no control uses doesn't move any fan, so it works as a temperature card on the main screen. I keep cards for the second NVMe, `CPU Core Max` (it rises before the package does) and `System (Acer EC)`. I haven't identified what the EC's "system" sensor actually measures; it reads around 90 °C at idle on this unit, so don't drive fans from it.
 
 ## WMI encodings used
