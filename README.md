@@ -52,7 +52,7 @@ This is the setup I run on the AN515-57. Each fan follows its own chip, and the 
 |---|---|---|---|---|
 | `CPU` | Graph | `CPU Package` | 40→25, 55→35, 65→50, 75→70, 85→90 | +2 / −4 °C, 2 s / 5 s |
 | `GPU` | Graph | `GPU (Acer EC)` | 40→25, 55→35, 65→50, 72→70, 80→90, 87→100 | +2 / −4 °C, 2 s / 5 s |
-| `SSD WD (sistema)` | Graph | NVMe 0 temperature | 60→20, 66→30, 72→55, 76→80, 80→100 | +2 / −3 °C, 2 s / 10 s |
+| `SSD WD (sistema)` | Graph | `M.2 slot 0` | 60→20, 66→30, 72→55, 76→80, 80→100 | +2 / −3 °C, 2 s / 10 s |
 | `Ventoinhas` | Mix, **Max** | `CPU` + `SSD WD (sistema)` | — | — |
 
 | Control | Curve | Step |
@@ -65,6 +65,7 @@ Notes:
 - `GPU (Acer EC)` is preferred over NVIDIA's own sensors because the dGPU powers down under Optimus, and its sensors then disappear.
 - The SSD curve stays at 20% while the drive is in its normal range, so `CPU` usually wins the Max. It only takes over as the drive approaches its 80 °C warning threshold. Use your own drive's *Warning Temperature* from LibreHardwareMonitor or HWiNFO as the 100% point.
 - The NVMe sensors only show up once storage sensors are enabled in FanControl's settings; in `userConfig.json` that is `"DisableStorageSensors": false` and `"Storage": true` under the LHM settings. Lowering the storage update interval from 60 s to 10 s makes the SSD reading close to live.
+- **Naming.** Sensors get generic nicknames for where they are: `M.2 slot 0` (`/nvme/0/temperature/0`) and `M.2 slot 1` (`/nvme/1/temperature/0`). The drive-specific name goes only on the curve, so swapping a drive means renaming one curve. LHM numbers drives in enumeration order, which normally but not necessarily matches the physical slot.
 - **Display-only cards.** A Graph curve that no control uses doesn't move any fan, so it works as a temperature card on the main screen. I keep cards for the second NVMe, `CPU Core Max` (it rises before the package does) and `System (Acer EC)`. I haven't identified what the EC's "system" sensor actually measures; it reads around 90 °C at idle on this unit, so don't drive fans from it.
 
 ## WMI encodings used
