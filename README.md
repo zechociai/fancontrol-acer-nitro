@@ -62,11 +62,15 @@ This is the setup I run on the AN515-57. Each fan follows its own chip. The CPU 
 | `CPU` | Graph | `CPU Package` | 55→20, 65→25, 70→30, 75→55, 80→75, 85→100 | +2 / −4 °C, 2 s / 5 s |
 | `GPU` | Graph | `GPU (Acer EC)` | 40→25, 55→35, 65→50, 72→70, 80→90, 87→100 | +2 / −4 °C, 2 s / 5 s |
 | `SSD WD (sistema)` | Graph | `/nvme/0` | 60→20, 66→30, 72→55, 76→80, 80→100 | +2 / −3 °C, 2 s / 10 s |
+| `CPU quente` | Graph | `CPU Package` | 80→20, 85→50, 90→100 | +2 / −4 °C, 2 s / 5 s |
+| `GPU + CPU quente` | Mix (**Max**) | `GPU` + `CPU quente` | — | — |
 
 | Control | Curve | Step |
 |---|---|---|
 | CPU fan (Acer) | `CPU` | 8% up / 4% down |
-| GPU fan (Acer) | `GPU` | 8% up / 4% down |
+| GPU fan (Acer) | `GPU + CPU quente` | 8% up / 4% down |
+
+**Why the GPU fan also watches the CPU.** The CPU and GPU share the heatpipes. In the GPU load test (see Safety behavior), the GPU's heat pushed the CPU to 88–92 °C while the GPU itself stayed at 64 °C. The CPU fan was already at full speed, but the GPU fan, following its own curve, was nowhere near it. `CPU quente` stays at 20% up to 80 °C, so it never wins the Max at idle or under CPU-only load (73–75 °C in the CPU test), and the GPU fan stays quiet there. Above 80 °C it takes over and brings the GPU fan to 100% at 90 °C, so both fans pull heat off the shared heatpipes.
 
 **If the system NVMe is in the CPU-side slot.** The CPU-side M.2 slot sits under the heatpipes. A drive there can heat up while the CPU curve is still idling. When I ran the drive there, I added a Mix curve `Ventoinhas` (function **Max**, `CPU` + `SSD WD (sistema)`) and pointed the CPU fan at it, so the fan follows whichever of the two asks for more. In the cooler chipset slot the drive doesn't need it, so `SSD WD (sistema)` is a display-only card.
 
