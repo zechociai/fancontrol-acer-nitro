@@ -57,7 +57,7 @@ To install by hand, run `dotnet build src -c Release` and copy `src\bin\Release\
 
 ## Suggested setup
 
-This is the setup I run on the AN515-57. Each fan follows its own chip. The CPU curve stays near the 20% floor up to 70 °C for quiet everyday use, then ramps steeply to 100% at 85 °C. The plugin's 92 °C emergency override still applies on top.
+This is the setup I run on the AN515-57, tuned from the load tests above. Each fan follows its own chip, and also steps in when the other chip gets hot, because they share the heatpipes. The CPU fan also watches the SSD, which sits in the CPU-side slot. The CPU curve stays near the 20% floor up to 70 °C for quiet everyday use, then ramps steeply to 100% at 85 °C. The plugin's 92 °C emergency override still applies on top.
 
 | Curve | Type | Source | Points (°C → %) | Hysteresis (up / down, response time) |
 |---|---|---|---|---|
@@ -65,16 +65,22 @@ This is the setup I run on the AN515-57. Each fan follows its own chip. The CPU 
 | `GPU` | Graph | `GPU (Acer EC)` | 40→25, 55→35, 65→50, 72→70, 80→90, 87→100 | +2 / −4 °C, 2 s / 5 s |
 | `SSD WD (sistema)` | Graph | `/nvme/0` | 60→20, 66→30, 72→55, 76→80, 80→100 | +2 / −3 °C, 2 s / 10 s |
 | `CPU quente` | Graph | `CPU Package` | 80→20, 85→50, 90→100 | +2 / −4 °C, 2 s / 5 s |
+| `GPU quente` | Graph | `GPU (Acer EC)` | 70→20, 78→60, 85→100 | +2 / −4 °C, 2 s / 5 s |
 | `GPU + CPU quente` | Mix (**Max**) | `GPU` + `CPU quente` | — | — |
+| `CPU + GPU quente + SSD` | Mix (**Max**) | `CPU` + `GPU quente` + `SSD WD (sistema)` | — | — |
 
 | Control | Curve | Step |
 |---|---|---|
-| CPU fan (Acer) | `CPU` | 8% up / 4% down |
+| CPU fan (Acer) | `CPU + GPU quente + SSD` | 8% up / 4% down |
 | GPU fan (Acer) | `GPU + CPU quente` | 8% up / 4% down |
 
 **Why the GPU fan also watches the CPU.** The CPU and GPU share the heatpipes. In the GPU load test (see Safety behavior), the GPU's heat pushed the CPU to 88–92 °C while the GPU itself stayed at 64 °C. The CPU fan was already at full speed, but the GPU fan, following its own curve, was nowhere near it. `CPU quente` stays at 20% up to 80 °C, so it never wins the Max at idle or under CPU-only load (73–75 °C in the CPU test), and the GPU fan stays quiet there. Above 80 °C it takes over and brings the GPU fan to 100% at 90 °C, so both fans pull heat off the shared heatpipes.
 
-**If the system NVMe is in the CPU-side slot.** The CPU-side M.2 slot sits under the heatpipes. A drive there can heat up while the CPU curve is still idling. When I ran the drive there, I added a Mix curve `Ventoinhas` (function **Max**, `CPU` + `SSD WD (sistema)`) and pointed the CPU fan at it, so the fan follows whichever of the two asks for more. In the cooler chipset slot the drive doesn't need it, so `SSD WD (sistema)` is a display-only card.
+**Why the CPU fan also watches the GPU.** The same thing, the other way round. `GPU quente` stays at 20% up to 70 °C, so in a game (Overwatch, GPU up to about 67 °C) it doesn't add noise. It only takes over if the GPU gets well above what games reached in testing, so the CPU fan helps then too. In the WebGL test the CPU fan was already at 100% from its own curve, so this curve is a safety margin, not a measured gain.
+
+**Why the CPU fan also watches the SSD.** The system NVMe is in the CPU-side M.2 slot, which sits under the heatpipes. A drive there can heat up while the CPU curve is still idling, so `SSD WD (sistema)` is the third input of the CPU fan's Mix. If the drive is in the cooler chipset slot, drop it from the Mix and keep it as a display-only card.
+
+**What more tuning can't fix.** With both fans at 100% the CPU still reads 88–92 °C under a heavy GPU load. That is the limit of the shared heatpipes, not of the curves. Ramping the fans earlier wouldn't lower that steady state, only make everyday use louder, so the curves stay quiet up to about 70 °C.
 
 Notes:
 
@@ -88,7 +94,7 @@ Notes:
   | M.2 slot 0 | CPU | PEG11 `9A05`, `PCIROOT(0)#PCI(0101)` | PCIe only |
   | M.2 slot 1 | Chipset (PCH) | Root Port #9 `43B0`, `PCIROOT(0)#PCI(1D00)` | PCIe or SATA |
 
-  Both links run at PCIe 3.0 x4. The CPU slot skips the chipset-to-CPU link, but it sits under the CPU heatpipes; the chipset slot runs cooler. I now run a single drive, the WD SN530, in the chipset slot. It shows up as `/nvme/0/temperature/0` with the nickname `M.2 slot 1 (chipset)`, because the LHM index doesn't name the slot (see below). To check which port each drive is on, run this in PowerShell:
+  Both links run at PCIe 3.0 x4. The CPU slot skips the chipset-to-CPU link, but it sits under the CPU heatpipes; the chipset slot runs cooler. I now run a single drive, the WD SN530, in the CPU-side slot (under the heatpipes). It shows up as `/nvme/0/temperature/0` with the nickname `M.2 slot 0 (CPU)`, because the LHM index doesn't name the slot (see below). With the WD there, Windows reports its port as `PCI Express Root Port #9 - 43B0`, which doesn't match the table above. So the table's port-to-slot mapping is unconfirmed. Go by where the drive physically sits; that is what matters for heat. To check which port each drive is on, run this in PowerShell:
 
   ```powershell
   Get-PnpDevice -Class DiskDrive -PresentOnly | ForEach-Object {
