@@ -64,11 +64,15 @@ This is the setup I run on the AN515-57, tuned from the load tests above. Each f
 |---|---|---|---|---|
 | `CPU` | Graph | `CPU Package` | 55→20, 65→25, 70→30, 75→55, 80→75, 85→100 | +2 / −4 °C, 2 s / 5 s |
 | `GPU` | Graph | `GPU (Acer EC)` | 40→25, 55→35, 65→50, 72→70, 80→90, 87→100 | +2 / −4 °C, 2 s / 5 s |
-| `SSD WD (sistema)` | Graph | `/nvme/0` | 60→20, 66→30, 72→55, 76→80, 80→100 | +2 / −3 °C, 2 s / 10 s |
 | `CPU quente` | Graph | `CPU Package` | 80→20, 85→50, 90→100 | +2 / −4 °C, 2 s / 5 s |
 | `GPU quente` | Graph | `GPU (Acer EC)` | 70→20, 78→60, 85→100 | +2 / −4 °C, 2 s / 5 s |
-| `GPU + CPU quente` | Mix (**Max**) | `GPU` + `CPU quente` | — | — |
+| `SSD WD (sistema)` | Graph | `/nvme/0` | 60→20, 66→30, 72→55, 76→80, 80→100 | +2 / −3 °C, 2 s / 10 s |
 | `CPU + GPU quente + SSD` | Mix (**Max**) | `CPU` + `GPU quente` + `SSD WD (sistema)` | — | — |
+| `GPU + CPU quente` | Mix (**Max**) | `GPU` + `CPU quente` | — | — |
+| `Sistema (Acer EC)` | Graph (card only) | `System (Acer EC)` | 30→0, 80→100 | +1 / −1 °C, 1 s / 1 s |
+| `ACPI TZ00` | Graph (card only) | `ACPI TZ00` | 30→0, 80→100 | +1 / −1 °C, 1 s / 1 s |
+
+The curves are listed in the order they appear in `userConfig.json`: the two main curves, the inputs to the Mixes, the Mix for each fan, then the display-only cards.
 
 | Control | Curve | Step |
 |---|---|---|
