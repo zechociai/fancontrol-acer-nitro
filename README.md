@@ -93,6 +93,19 @@ Notes:
 - **Display-only cards.** A Graph curve that no control uses doesn't move any fan, so it works as a temperature card on the main screen. I keep cards for `CPU Core Max` (it rises before the package does), `System (Acer EC)` and `ACPI TZ00` (points 30→0, 80→100, so the bar fills over the board's normal range). I haven't identified what the EC's "system" sensor actually measures; it reads around 90 °C at idle on this unit, so don't drive fans from it.
 - **What the EC exposes.** A scan of `GetGamingSysInfo` IDs 0x00–0x3F (command byte 0x01) on the AN515-57 returns data only for 0x01 CPU temperature, 0x02 CPU fan, 0x03 system temperature, 0x06 GPU fan and 0x0A GPU temperature, all already exposed. In a test with the CPU going from 51 to 78 °C under full load, 0x03 stayed at 90–92 °C. It doesn't follow load, so treat it as unreliable.
 - **`ACPI TZ00`.** This is the board thermal zone Windows itself uses for passive cooling, around 48–51 °C on this unit. FanControl doesn't read ACPI zones natively, so the plugin adds them. It reads the *Thermal Zone Information* performance counter (`Win32_PerfRawData_Counters_ThermalZoneInformation`), which re-evaluates `_TMP` on each read, rather than `MSAcpi_ThermalZoneTemperature`, which often returns a cached value. The zone moves slowly; use it as a chassis-level reading, not a fan source.
+- **Calibration (RPM × %).** Each control is paired with its RPM sensor, so FanControl's *Calibrate* works. My result on the AN515-57, in RPM:
+
+  | Fan | 0–20% | 30% | 40% | 50% | 60% | 70% | 80% | 90% | 100% |
+  |---|---|---|---|---|---|---|---|---|---|
+  | CPU | 3370 | 3614 | 3834 | 4054 | 4411 | 4411 | 4598 | 4761 | 5172 |
+  | GPU | 4477 | 4687 | 4918 | 5263 | 5263 | 5454 | 5660 | 5882 | 6250 |
+
+  - **The percentage is duty, not a share of top speed.** At its 20% floor the CPU fan already spins at 3370 RPM, 65% of its 5172 RPM maximum. 30% is 3614 RPM, about 70%. Low percentages sound louder than the number suggests.
+  - **0–20% read the same.** The plugin never commands less than 20%, so the fan never goes below that speed.
+  - **Some neighbouring points match** (CPU 60/70%, GPU 50/60%). The EC runs the fans in a few fixed speed steps, so two nearby percentages can land on the same step.
+  - **Spot check.** I read the EC directly while FanControl was running. CPU at 33–35% gave 3658–3750 RPM, within 1% of the table. GPU at 25% gave 4347–4411 RPM, about 4% below the table. The RPM reading moves in steps of about 50–60 RPM.
+  - **The table doesn't change what a curve sends.** With percent-mode curves (the default), the fans get the percentage the curve asks for. The table only feeds FanControl's RPM estimates.
+  - **Re-running it.** Use *Calibrate* with the laptop idle. Don't touch the window while it runs: closing FanControl or reloading the config mid-run aborts it ("was disposed during calibration" in `log.txt`), and the old table stays.
 
 ## WMI encodings used
 
