@@ -58,17 +58,17 @@ To install by hand, run `dotnet build src -c Release` and copy `src\bin\Release\
 
 ## Suggested setup
 
-This is the setup I run on the AN515-57, tuned from the load tests above. Each fan follows its own chip, and also steps in when the other chip gets hot, because they share the heatpipes. The CPU fan also watches the SSD, which sits in the CPU-side slot. The CPU curve stays near the 20% floor up to 70 °C for quiet everyday use, then ramps steeply to 100% at 85 °C. The plugin's 92 °C emergency override still applies on top.
+This is the setup I run on the AN515-57, tuned from the load tests above. There are two kinds of curve. The main `CPU` and `GPU` curves are quiet: they never go above 40%. The `quente` curves handle real heat, and they ramp hard. Each fan's Mix takes the Max of its own main curve and **both** `quente` curves, because the CPU and GPU share the heatpipes, so either chip getting hot speeds up both fans. The CPU fan also watches the SSD, which sits in the CPU-side slot. The plugin's 92 °C emergency override still applies on top.
 
 | Curve | Type | Source | Points (°C → %) | Hysteresis (up / down, response time) |
 |---|---|---|---|---|
-| `CPU` | Graph | `CPU Package` | 55→20, 65→25, 70→30, 75→55, 80→75, 85→100 | +2 / −4 °C, 2 s / 5 s |
-| `GPU` | Graph | `GPU (Acer EC)` | 40→25, 55→35, 65→50, 72→70, 80→90, 87→100 | +2 / −4 °C, 2 s / 5 s |
+| `CPU` | Graph | `CPU Package` | 55→20, 70→25, 80→40 | +2 / −4 °C, 2 s / 5 s |
+| `GPU` | Graph | `GPU (Acer EC)` | 45→20, 60→30, 70→40 | +2 / −4 °C, 2 s / 5 s |
 | `CPU quente` | Graph | `CPU Package` | 80→20, 85→50, 90→100 | +2 / −4 °C, 2 s / 5 s |
 | `GPU quente` | Graph | `GPU (Acer EC)` | 70→20, 78→60, 85→100 | +2 / −4 °C, 2 s / 5 s |
 | `SSD WD (sistema)` | Graph | `/nvme/0` | 60→20, 66→30, 72→55, 76→80, 80→100 | +2 / −3 °C, 2 s / 10 s |
-| `CPU + GPU quente + SSD` | Mix (**Max**) | `CPU` + `GPU quente` + `SSD WD (sistema)` | — | — |
-| `GPU + CPU quente` | Mix (**Max**) | `GPU` + `CPU quente` | — | — |
+| `Mix fan CPU` | Mix (**Max**) | `CPU` + `CPU quente` + `GPU quente` + `SSD WD (sistema)` | — | — |
+| `Mix fan GPU` | Mix (**Max**) | `GPU` + `GPU quente` + `CPU quente` | — | — |
 | `Sistema (Acer EC)` | Graph (card only) | `System (Acer EC)` | 30→0, 80→100 | +1 / −1 °C, 1 s / 1 s |
 | `ACPI TZ00` | Graph (card only) | `ACPI TZ00` | 30→0, 80→100 | +1 / −1 °C, 1 s / 1 s |
 
@@ -76,16 +76,16 @@ The curves are listed in the order they appear in `userConfig.json`: the two mai
 
 | Control | Curve | Step |
 |---|---|---|
-| CPU fan (Acer) | `CPU + GPU quente + SSD` | 8% up / 4% down |
-| GPU fan (Acer) | `GPU + CPU quente` | 8% up / 4% down |
+| CPU fan (Acer) | `Mix fan CPU` | 8% up / 4% down |
+| GPU fan (Acer) | `Mix fan GPU` | 8% up / 4% down |
 
-**Why the GPU fan also watches the CPU.** The CPU and GPU share the heatpipes. In the GPU load test (see Safety behavior), the GPU's heat pushed the CPU to 88–92 °C while the GPU itself stayed at 64 °C. The CPU fan was already at full speed, but the GPU fan, following its own curve, was nowhere near it. `CPU quente` stays at 20% up to 80 °C, so it never wins the Max at idle or under CPU-only load (73–75 °C in the CPU test), and the GPU fan stays quiet there. Above 80 °C it takes over and brings the GPU fan to 100% at 90 °C, so both fans pull heat off the shared heatpipes.
+**How the handover works.** Each main curve ends at 40% right where its `quente` curve starts to climb, so there is no gap. On the CPU, `CPU` reaches 40% at 80 °C, then `CPU quente` gives 50% at 85 °C and 100% at 90 °C. On the GPU, `GPU` reaches 40% at 70 °C, then `GPU quente` gives 60% at 78 °C and 100% at 85 °C. Below those points the fans stay near the floor. That covers everyday use, CPU-only load (73–75 °C in the CPU test) and games (Overwatch, GPU up to about 67 °C).
 
-**Why the CPU fan also watches the GPU.** The same thing, the other way round. `GPU quente` stays at 20% up to 70 °C, so in a game (Overwatch, GPU up to about 67 °C) it doesn't add noise. It only takes over if the GPU gets well above what games reached in testing, so the CPU fan helps then too. In the WebGL test the CPU fan was already at 100% from its own curve, so this curve is a safety margin, not a measured gain.
+**Why both fans watch both `quente` curves.** The CPU and GPU share the heatpipes. In the GPU load test (see Safety behavior), the GPU's heat pushed the CPU to 88–92 °C while the GPU itself stayed at 64 °C. With only its own curve, the GPU fan wasn't helping. Because both `quente` curves sit at 20% until their chip is hot, they add no noise in normal use. When either chip gets hot, both fans go to full speed and pull heat off the shared heatpipes together.
 
-**Why the CPU fan also watches the SSD.** The system NVMe is in the CPU-side M.2 slot, which sits under the heatpipes. A drive there can heat up while the CPU curve is still idling, so `SSD WD (sistema)` is the third input of the CPU fan's Mix. If the drive is in the cooler chipset slot, drop it from the Mix and keep it as a display-only card.
+**Why the CPU fan also watches the SSD.** The system NVMe is in the CPU-side M.2 slot, which sits under the heatpipes. A drive there can heat up while the CPU curve is still idling, so `SSD WD (sistema)` is an input of the CPU fan's Mix. If the drive is in the cooler chipset slot, drop it from the Mix and keep it as a display-only card.
 
-**What more tuning can't fix.** With both fans at 100% the CPU still reads 88–92 °C under a heavy GPU load. That is the limit of the shared heatpipes, not of the curves. Ramping the fans earlier wouldn't lower that steady state, only make everyday use louder, so the curves stay quiet up to about 70 °C.
+**What more tuning can't fix.** With both fans at 100% the CPU still reads 88–92 °C under a heavy GPU load. That is the limit of the shared heatpipes, not of the curves. Ramping the fans earlier wouldn't lower that steady state, only make everyday use louder, so the main curves stay quiet and only the `quente` curves push the fans hard.
 
 Notes:
 
