@@ -23,7 +23,7 @@ Other Nitro or Predator models that expose `AcerGamingFunction` with the same en
 ## Safety behavior
 
 - **Minimum 20%:** the plugin never commands a fan below 20%, whatever the curve asks.
-- **Emergency override:** if the CPU or GPU reaches **92 °C**, both controlled fans go to 100% until it drops.
+- **Emergency override:** if the CPU or GPU (Acer EC readings) stays at or above **92 °C for 3 s**, or reaches **97 °C** at all, both controlled fans go to 100% until it drops below 92 °C. The 3 s hold is there because turbo bursts make the EC's CPU reading jump for a second or two; I measured 58 → 78 °C in 0.2 s, back down 1.3 s later. Without the hold, those spikes kept triggering 1–3 s blasts at 100%.
 - **Turbo key respected:** while the firmware is in Turbo, the plugin stops writing and resumes when Turbo ends.
 - **Mode re-assert:** custom mode is re-applied every 30 s, since the firmware can drop it after sleep or a power-profile change.
 - **Back to AUTO:** when a control is disabled, after 3 consecutive write failures, or when FanControl exits, the fans go back to the firmware's AUTO mode.

@@ -13,7 +13,9 @@ public sealed class AcerNitroPlugin : IPlugin2
 {
     // Safety limits.
     internal const int MinPercent = 20;         // never command a fan below this
-    internal const int EmergencyTemp = 92;      // at/above this, both controlled fans go to 100%
+    internal const int EmergencyTemp = 92;      // held at/above this for EmergencyHold, both controlled fans go to 100%
+    internal const int EmergencyHardTemp = 97;  // at/above this, 100% immediately
+    private static readonly TimeSpan EmergencyHold = TimeSpan.FromSeconds(3);
     private static readonly TimeSpan ModeRefresh = TimeSpan.FromSeconds(30);
 
     private readonly IPluginLogger _logger;
@@ -29,6 +31,7 @@ public sealed class AcerNitroPlugin : IPlugin2
     private DateTime _lastModeApply = DateTime.MinValue;
     private bool _turboPaused;
     private bool _emergency;
+    private DateTime? _hotSince;
 
     public AcerNitroPlugin(IPluginLogger logger)
     {
@@ -168,12 +171,19 @@ public sealed class AcerNitroPlugin : IPlugin2
             _lastModeApply = DateTime.UtcNow;
         }
 
-        // Emergency override, independent of the user's curves.
-        var hot = (_cpuTemp?.Value ?? 0) >= EmergencyTemp || (_gpuTemp?.Value ?? 0) >= EmergencyTemp;
+        // Emergency override, independent of the user's curves. Turbo bursts make the EC's CPU reading spike
+        // for a second or two, so 92 C must hold for EmergencyHold; 97 C triggers at once.
+        var peak = Math.Max(_cpuTemp?.Value ?? 0, _gpuTemp?.Value ?? 0);
+        var now = DateTime.UtcNow;
+        if (peak >= EmergencyTemp) _hotSince ??= now;
+        else _hotSince = null;
+        var hot = peak >= EmergencyHardTemp || (_hotSince is DateTime since && now - since >= EmergencyHold);
         if (hot != _emergency)
         {
             _emergency = hot;
-            Log(hot ? $"Emergency: temperature >= {EmergencyTemp} C, forcing 100%." : "Emergency cleared.");
+            Log(hot
+                ? $"Emergency: {peak:0} C (>= {EmergencyHardTemp} C, or >= {EmergencyTemp} C for {EmergencyHold.TotalSeconds:0} s), forcing 100%."
+                : "Emergency cleared.");
         }
 
         _cpuControl?.Apply(_emergency);
