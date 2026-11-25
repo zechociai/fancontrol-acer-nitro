@@ -24,6 +24,15 @@ Other Nitro or Predator models that expose `AcerGamingFunction` with the same en
 
 - **Minimum 20%:** the plugin never commands a fan below 20%, whatever the curve asks.
 - **Emergency override:** if the CPU or GPU (Acer EC readings) stays at or above **92 °C for 3 s**, or reaches **97 °C** at all, both controlled fans go to 100% until it drops below 92 °C. The 3 s hold is there because turbo bursts make the EC's CPU reading jump for a second or two; I measured 58 → 78 °C in 0.2 s, back down 1.3 s later. Without the hold, those spikes kept triggering 1–3 s blasts at 100%.
+  - **Load tests (AN515-57, suggested setup below).** I read the EC every 0.2 s during each test. The emergency never triggered, and no reading reached 92 °C.
+
+    | Load | CPU (EC) | GPU (EC) | Notes |
+    |---|---|---|---|
+    | All 16 CPU threads at 100%, 3 min | 43 → 70 °C in 30 s, then 73–75 °C | ≤ 45 °C | CPU fan followed the curve from 3370 to 4054 RPM (about 50%), back to the floor afterwards |
+    | WebGL shader, RTX 3050 at 100% / ~68 W, about 45 s | 84–91 °C | 59–62 °C (`nvidia-smi` 60–62 °C) | the browser also loads the CPU, and both chips share the heatpipes |
+
+    Sustained CPU-only load stays well below the threshold. GPU load gets the CPU reading closest, to within 1 °C, so a long gaming session is where the emergency would fire for real, and there the 3 s hold doesn't get in the way. In a game (Overwatch) the GPU tops out around 67 °C. The old 1–3 s blasts came about every 65 s, which looks more like a periodic bad EC reading than real heat; the hold filters those out too.
+  - The log line for an emergency includes the reading that caused it, e.g. `Emergency: 93 C (>= 97 C, or >= 92 C for 3 s), forcing 100%.`
 - **Turbo key respected:** while the firmware is in Turbo, the plugin stops writing and resumes when Turbo ends.
 - **Mode re-assert:** custom mode is re-applied every 30 s, since the firmware can drop it after sleep or a power-profile change.
 - **Back to AUTO:** when a control is disabled, after 3 consecutive write failures, or when FanControl exits, the fans go back to the firmware's AUTO mode.
