@@ -46,24 +46,25 @@ To install by hand, run `dotnet build src -c Release` and copy `src\bin\Release\
 
 ## Suggested setup
 
-This is the setup I ran on the AN515-57 while the system NVMe sat in the CPU-side M.2 slot, under the heatpipes. Each fan follows its own chip, and the CPU fan also watches that drive. With the drive in the cooler chipset slot you can drop the Mix and point the CPU fan straight at `CPU`.
+This is the setup I run on the AN515-57. Each fan follows its own chip. The CPU curve stays near the 20% floor up to 70 °C for quiet everyday use, then ramps steeply to 100% at 85 °C. The plugin's 92 °C emergency override still applies on top.
 
 | Curve | Type | Source | Points (°C → %) | Hysteresis (up / down, response time) |
 |---|---|---|---|---|
-| `CPU` | Graph | `CPU Package` | 40→25, 55→35, 65→50, 75→70, 85→90 | +2 / −4 °C, 2 s / 5 s |
+| `CPU` | Graph | `CPU Package` | 55→20, 65→25, 70→30, 75→55, 80→75, 85→100 | +2 / −4 °C, 2 s / 5 s |
 | `GPU` | Graph | `GPU (Acer EC)` | 40→25, 55→35, 65→50, 72→70, 80→90, 87→100 | +2 / −4 °C, 2 s / 5 s |
 | `SSD WD (sistema)` | Graph | `/nvme/0` | 60→20, 66→30, 72→55, 76→80, 80→100 | +2 / −3 °C, 2 s / 10 s |
-| `Ventoinhas` | Mix, **Max** | `CPU` + `SSD WD (sistema)` | — | — |
 
 | Control | Curve | Step |
 |---|---|---|
-| CPU fan (Acer) | `Ventoinhas` | 8% up / 4% down |
+| CPU fan (Acer) | `CPU` | 8% up / 4% down |
 | GPU fan (Acer) | `GPU` | 8% up / 4% down |
+
+**If the system NVMe is in the CPU-side slot.** The CPU-side M.2 slot sits under the heatpipes. A drive there can heat up while the CPU curve is still idling. When I ran the drive there, I added a Mix curve `Ventoinhas` (function **Max**, `CPU` + `SSD WD (sistema)`) and pointed the CPU fan at it, so the fan follows whichever of the two asks for more. In the cooler chipset slot the drive doesn't need it, so `SSD WD (sistema)` is a display-only card.
 
 Notes:
 
 - `GPU (Acer EC)` is preferred over NVIDIA's own sensors because the dGPU powers down under Optimus, and its sensors then disappear.
-- The SSD curve stays at 20% while the drive is in its normal range, so `CPU` usually wins the Max. It only takes over as the drive approaches its 80 °C warning threshold. Use your own drive's *Warning Temperature* from LibreHardwareMonitor or HWiNFO as the 100% point.
+- In the Mix, the SSD curve stays at 20% while the drive is in its normal range, so `CPU` usually wins the Max. It only takes over as the drive approaches its 80 °C warning threshold. Use your own drive's *Warning Temperature* from LibreHardwareMonitor or HWiNFO as the 100% point.
 - The NVMe sensors only show up once storage sensors are enabled in FanControl's settings; in `userConfig.json` that is `"DisableStorageSensors": false` and `"Storage": true` under the LHM settings. Lowering the storage update interval from 60 s to 10 s makes the SSD reading close to live.
 - **Naming.** Sensors get nicknames for the physical slot they're in, and the drive-specific name goes only on the curve. The AN515-57 has two M.2 slots:
 
